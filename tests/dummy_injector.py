@@ -10,33 +10,28 @@ def create_rwx_memory():
     print("=== Dummy RWX Memory Allocator & Injector ===")
 
     pid = os.getpid()
-    print(f"[*] PID של תהליך המטרה: {pid}")
+    print(f"[*] Target Process PID: {pid}")
 
     kernel32 = ctypes.windll.kernel32
     VirtualAlloc = kernel32.VirtualAlloc
     VirtualAlloc.restype = ctypes.c_void_p
 
-    print("[*] מבקש מ-Windows להקצות 1KB של זיכרון RWX...")
+    print("[*] Requesting Windows to allocate 1KB of RWX memory...")
     allocated_memory = VirtualAlloc(0, 1024, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE)
 
     if not allocated_memory:
-        print("[!] שגיאה בהקצאת הזיכרון.")
+        print("[!] Error: Failed to allocate memory.")
         return
 
-    print(f"[+] זיכרון RWX הוקצה בהצלחה בכתובת: {hex(allocated_memory)}")
+    print(f"[+] RWX memory allocated successfully at: {hex(allocated_memory)}")
 
-    # ==========================================
-    # השלב החדש: כתיבת ה-"Shellcode" לזיכרון
-    # ==========================================
-    # ניצור רצף בתים שמדמה NOP Sled (0x90) ואחריו Breakpoints (0xCC)
+    # Inject simulated payload: NOP sled (0x90) followed by INT3 Breakpoints (0xCC)
     fake_shellcode = b"\x90" * 16 + b"\xCC" * 16
-
-    # נעתיק את הבתים לתוך כתובת הזיכרון שהקצינו
     ctypes.memmove(allocated_memory, fake_shellcode, len(fake_shellcode))
-    print(f"[+] הוזרקו {len(fake_shellcode)} Bytes של 'Shellcode' מזויף (NOPs + INT3) אל תוך הזיכרון.")
+    print(f"[+] Injected {len(fake_shellcode)} bytes of mock payload (NOPs + INT3) into memory.")
 
-    print("\n>>> עבור כעת לסקריפט mem_scanner.py, הרץ אותו, והזן את ה-PID שלמעלה. <<<")
-    input("\n(לאחר הסריקה) לחץ Enter כדי לשחרר את הזיכרון ולסגור את התוכנית...")
+    print("\n>>> Run the scanner in another terminal against this PID. <<<")
+    input("\nPress Enter after scanning to release memory and exit...")
 
 
 if __name__ == "__main__":
