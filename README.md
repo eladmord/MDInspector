@@ -1,6 +1,3 @@
-הבלוקים הפנימיים של ה-`cmd` סגרו את ה-Markdown החיצוני בגלל ששניהם השתמשו ב-3 גרשים. עטפתי את הכל בבלוק של 4 גרשים כדי ששום דבר לא יברח:
-
-```markdown
 # MDInspector (Memory Dump & Anomaly Inspector) 🔍
 
 MDInspector is a specialized Windows memory forensics and triage tool written in Python. It interacts directly with the Windows API via `ctypes` to identify, analyze, and dump evasive memory-resident threats—such as Fileless Malware, Shellcode, and Reflective DLL Injections—in live virtual memory spaces.
@@ -85,5 +82,3 @@ A dedicated script (`dummy_injector.py`) is included to validate the detection e
 ## ⚠️ Disclaimer
 
 This project was developed for defensive research, digital forensics, and academic study of Windows Internals. Always ensure proper authorization before analyzing live target processes in production environments.
-
-```
