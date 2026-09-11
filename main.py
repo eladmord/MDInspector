@@ -1,24 +1,41 @@
 import argparse
 import ctypes
-from scanner import scan_rwx_memory
+from ctypes import wintypes
+from scanner import scan_process_memory
+
+
+def get_all_pids():
+    """Retrieves all active Process IDs using the Windows API (EnumProcesses)"""
+    psapi = ctypes.WinDLL('psapi')
+
+    # הקצאת מערך מספיק גדול להכיל את כל ה-PIDs (עד 1024 תהליכים)
+    array_size = 1024
+    process_ids = (wintypes.DWORD * array_size)()
+    bytes_returned = wintypes.DWORD()
+
+    if not psapi.EnumProcesses(ctypes.byref(process_ids), ctypes.sizeof(process_ids), ctypes.byref(bytes_returned)):
+        print("[!] Failed to enumerate processes.")
+        return []
+
+    # חישוב כמות ה-PIDs שהוחזרו בפועל
+    num_processes = bytes_returned.value // ctypes.sizeof(wintypes.DWORD)
+    return [process_ids[i] for i in range(num_processes) if process_ids[i] != 0]
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Advanced Windows Memory Scanner: Detects unbacked executable memory and injected payloads.",
-        epilog="Example usage: python main.py --pid 1234",
+        description="MDInspector: Windows Process Memory Injection & Unbacked Code Scanner",
+        epilog="Examples:\n  python main.py -p 1234\n  python main.py --all",
         formatter_class=argparse.RawTextHelpFormatter
     )
 
-    parser.add_argument(
-        "-p", "--pid",
-        type=int,
-        required=True,
-        help="The Process ID (PID) of the target process to scan."
-    )
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("-p", "--pid", type=int, help="Target Process PID to scan")
+    group.add_argument("-a", "--all", action="store_true", help="Scan all running processes (Quiet Mode)")
 
     args = parser.parse_args()
 
-    print("=== Windows Memory Dump & Anomaly Inspector ===")
+    print("=== MDInspector: Memory Forensics & Anomaly Detector ===")
 
     try:
         is_admin = ctypes.windll.shell32.IsUserAnAdmin()
@@ -26,8 +43,25 @@ if __name__ == "__main__":
         is_admin = False
 
     if not is_admin:
-        print("[!] WARNING: Script is not running with Administrative privileges.")
-        print("    OpenProcess may fail with Access Denied (Error 5) for certain processes.\n")
+        print("[!] Warning: Non-admin privileges detected. Many processes will return Access Denied.\n")
 
-    # Execute the scanner module
-    scan_rwx_memory(args.pid)
+    if args.pid:
+        scan_process_memory(args.pid, quiet=False)
+    elif args.all:
+        print("[*] Initiating system-wide scan across all active processes...")
+        print("[*] Running in Quiet Mode: Only anomalies (Unbacked Executable Memory) will be reported.\n")
+
+        pids = get_all_pids()
+        suspicious_processes = 0
+
+        for pid in pids:
+            # מעבירים quiet=True כדי לסנן רעשי רקע
+            findings = scan_process_memory(pid, quiet=True)
+            if any(f.get("Type") == 0x20000 for f in findings):  # 0x20000 = MEM_PRIVATE
+                suspicious_processes += 1
+
+        print(f"\n[*] System-wide scan complete. Scanned {len(pids)} processes.")
+        if suspicious_processes == 0:
+            print("[v] No memory anomalies detected system-wide.")
+        else:
+            print(f"[!] Found anomalies in {suspicious_processes} processes. Check the 'dumps' directory.")
