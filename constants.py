@@ -23,7 +23,7 @@ PAGE_EXECUTE_READ = 0x20
 PAGE_EXECUTE_READWRITE = 0x40
 PAGE_EXECUTE_WRITECOPY = 0x80
 
-# כלל ההרשאות שמאפשרות הרצת קוד (Execution Flags)
+# All protection flags granting code execution privileges
 EXECUTABLE_PROTECTIONS = (
     PAGE_EXECUTE,
     PAGE_EXECUTE_READ,
@@ -33,10 +33,10 @@ EXECUTABLE_PROTECTIONS = (
 
 # --- Threat Signatures ---
 SUSPICIOUS_PATTERNS = {
-    # אנחנו מחפשים NOP Sled משמעותי של 16 בייטים ברצף, כדי למנוע זיהוי שווא
+    # Match a 16-byte contiguous NOP sled to suppress false positives from short padding
     "NOP Sled (Potential Shellcode)": b"\x90" * 16,
 
-    # הסרנו את ה-INT3 (0xCC) לחלוטין מכיוון שמנועי JIT משתמשים בו לריפוד זיכרון לגיטימי
+    # INT3 (0xCC) omitted: JIT engines frequently use 0xCC for alignment padding
 }
 
 
