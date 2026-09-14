@@ -2,6 +2,7 @@
 
 MDInspector is a specialized Windows memory forensics and triage tool written in Python. It interacts directly with the Windows API via `ctypes` to identify, analyze, and dump evasive memory-resident threats—such as Fileless Malware, Shellcode, and Reflective DLL Injections—in live virtual memory spaces.
 
+> 📖 **Deep Dive Analysis:** For a detailed breakdown of the memory mechanics, W^X evasion, and JIT noise suppression heuristics, read the full article on Medium: [Beyond RWX: Hunting Unbacked Executable Memory in Windows](https://medium.com/@em43393/beyond-rwx-hunting-unbacked-executable-memory-and-modern-w-x-evasion-in-windows-aa6875f795de).
 ---
 
 ## 🧠 Core Architecture & Detection Logic
