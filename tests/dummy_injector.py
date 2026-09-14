@@ -35,7 +35,7 @@ def run_injector():
 
     print(f"[+] Memory allocated at: {hex(allocated_memory)}")
 
-    # פיילוד דמה: NOP Sled ולאחריו INT3
+    # Mock payload: NOP sled sequence followed by INT3 breakpoints
     mock_shellcode = b"\x90" * 16 + b"\xCC" * 16
     ctypes.memmove(allocated_memory, mock_shellcode, len(mock_shellcode))
     print(f"[+] Written {len(mock_shellcode)} bytes of mock shellcode.")
