@@ -10,8 +10,7 @@ from constants import (
     CloseHandle, ReadProcessMemory, SIZE_T
 )
 
-MAX_DUMP_SIZE = 50 * 1024 * 1024  # 50MB MAX DUMP
-
+MAX_DUMP_SIZE = 50 * 1024 * 1024  # 50MB safety dump limit
 
 def calculate_entropy(data):
     if not data:
@@ -24,7 +23,6 @@ def calculate_entropy(data):
         entropy += - p_x * math.log2(p_x)
     return entropy
 
-
 def get_protection_name(protect_val):
     base_protect = protect_val & 0xFF
     names = {
@@ -35,11 +33,10 @@ def get_protection_name(protect_val):
     }
     return names.get(base_protect, f"0x{protect_val:X}")
 
-
 def scan_process_memory(pid, quiet=False):
     if not quiet:
         print(f"[*] Opening target process: PID {pid}")
-
+        
     h_process = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, False, pid)
 
     if not h_process:
@@ -70,7 +67,7 @@ def scan_process_memory(pid, quiet=False):
                 is_unbacked = (mbi.Type == MEM_PRIVATE)
                 is_rwx = ((mbi.Protect & 0xFF) == PAGE_EXECUTE_READWRITE)
 
-                # אם זה אזור מגובה קובץ ובמצב שקט - דלג
+                # Skip file-backed memory regions when running in quiet mode
                 if quiet and not is_unbacked:
                     address += mbi.RegionSize
                     continue
@@ -93,35 +90,32 @@ def scan_process_memory(pid, quiet=False):
                         entropy = calculate_entropy(payload)
                         has_mz = payload[:2] == b"MZ"
                         matched_signatures = [name for name, sig in SUSPICIOUS_PATTERNS.items() if sig in payload]
-
+                        
                         is_high_entropy = entropy > 6.5
                         has_known_signatures = has_mz or len(matched_signatures) > 0
-
+                        
                         should_dump = is_high_entropy or has_known_signatures
 
-                        # == הסינון החכם ==
-                        # אם אנחנו במצב שקט וזה כנראה רק דפדפן (JIT) - שותקים ועוברים הלאה
+                        # Smart Filtering: Skip benign, low-entropy JIT pages during quiet sweeps
                         if quiet and not should_dump:
                             address += mbi.RegionSize
                             continue
 
-                        # מכאן והלאה - אנחנו מדפיסים כי מצאנו איום אמיתי (או שאנחנו במצב סריקה של PID בודד)
+                        # Display high-confidence threats (or all unbacked pages in targeted deep-dive mode)
                         if quiet:
                             print(f"\n[!!!] REAL THREAT DETECTED IN PID: {pid} [!!!]")
-
+                            
                         print(f"[!] Executable Region: {base_addr_hex} | Size: {mbi.RegionSize} bytes")
                         print(f"    --> Protection: {protect_str}")
                         print(f"    --> Memory Type: MEM_PRIVATE (Unbacked)")
                         print(f"    --> Threat Assessment: {severity}")
 
                         if not should_dump:
-                            print(
-                                f"    [i] Low Entropy ({entropy:.2f}) & No Signatures -> Classified as legitimate JIT. Skipping dump.\n")
+                            print(f"    [i] Low Entropy ({entropy:.2f}) & No Signatures -> Classified as legitimate JIT. Skipping dump.\n")
                         else:
                             if mbi.RegionSize > MAX_DUMP_SIZE and not quiet:
-                                print(
-                                    f"    [!] Warning: Region too large. Limiting dump to first {MAX_DUMP_SIZE} bytes.")
-
+                                print(f"    [!] Warning: Region too large. Limiting dump to first {MAX_DUMP_SIZE} bytes.")
+                            
                             print(f"    [+] Successfully read {bytes_read.value} bytes.")
                             print(f"    [i] Shannon Entropy: {entropy:.2f}/8.00", end="")
                             print(" (HIGH - Possible Packed/Encrypted Code!)" if is_high_entropy else " (LOW)")
@@ -137,10 +131,9 @@ def scan_process_memory(pid, quiet=False):
                             with open(dump_path, "wb") as f:
                                 f.write(payload)
                             print(f"    [v] Artifact dumped to: {dump_path}\n")
-
-                        # נוסיף לממצאים רק דברים שהחלטנו לא להתעלם מהם
-                        findings.append(
-                            {"Address": base_addr_hex, "Size": mbi.RegionSize, "Type": mbi.Type, "Dumped": should_dump})
+                            
+                        # Record actionable findings for reporting
+                        findings.append({"Address": base_addr_hex, "Size": mbi.RegionSize, "Type": mbi.Type, "Dumped": should_dump})
                     else:
                         if not quiet:
                             print(f"[!] Executable Region: {base_addr_hex} | Size: {mbi.RegionSize} bytes")
@@ -163,5 +156,5 @@ def scan_process_memory(pid, quiet=False):
 
     if not quiet:
         print(f"[*] Scan finished. Executable regions analyzed: {len(findings)}")
-
+        
     return findings
