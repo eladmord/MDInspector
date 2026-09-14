@@ -8,7 +8,7 @@ def get_all_pids():
     """Retrieves all active Process IDs using the Windows API (EnumProcesses)"""
     psapi = ctypes.WinDLL('psapi')
 
-    # הקצאת מערך מספיק גדול להכיל את כל ה-PIDs (עד 1024 תהליכים)
+    # Allocate an array large enough to hold active PIDs (up to 1024 processes)
     array_size = 1024
     process_ids = (wintypes.DWORD * array_size)()
     bytes_returned = wintypes.DWORD()
@@ -17,7 +17,7 @@ def get_all_pids():
         print("[!] Failed to enumerate processes.")
         return []
 
-    # חישוב כמות ה-PIDs שהוחזרו בפועל
+    # Calculate the actual number of PIDs returned
     num_processes = bytes_returned.value // ctypes.sizeof(wintypes.DWORD)
     return [process_ids[i] for i in range(num_processes) if process_ids[i] != 0]
 
@@ -55,7 +55,7 @@ if __name__ == "__main__":
         suspicious_processes = 0
 
         for pid in pids:
-            # מעבירים quiet=True כדי לסנן רעשי רקע
+            # Pass quiet=True to suppress background noise during system sweep
             findings = scan_process_memory(pid, quiet=True)
             if any(f.get("Type") == 0x20000 for f in findings):  # 0x20000 = MEM_PRIVATE
                 suspicious_processes += 1
